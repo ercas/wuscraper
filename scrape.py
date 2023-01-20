@@ -6,6 +6,7 @@ import enum
 import gzip
 import json
 import logging
+import multiprocessing
 import os
 import typing
 
@@ -136,6 +137,11 @@ def build_parser():
         help="Export all scraped observations from personal weather stations"
              " (bypasses the normal scraping routine)"
     )
+    export_daily_parser.add_argument(
+        "-j", "--jobs", type=int, default=1,
+        help="The number of parallel workers to use to read and process the"
+             " raw JSON data."
+    )
     export_daily_parser.set_defaults(target=Targets.EXPORT_DAILY)
 
     export_historical_parser = subparsers.add_parser(
@@ -143,27 +149,48 @@ def build_parser():
         help="Export all scraped observations from NWS-operated weather stations"
              " (bypasses the normal scraping routine)"
     )
+    export_historical_parser.add_argument(
+        "-j", "--jobs", type=int, default=1,
+        help="The number of parallel workers to use to read and process the"
+             " raw JSON data."
+    )
     export_historical_parser.set_defaults(target=Targets.EXPORT_HISTORICAL)
 
     return parser
 
-
-def stream_observations(paths: typing.Iterable[str],
-                        output_path: str):
-    for observations_json_gz in paths:
-        if not observations_json_gz.endswith(".json.gz"):
-            continue
-        with gzip.open(observations_json_gz, "rt") as input_fp:
+def observations_json_gz_to_df(path: str) -> typing.Optional[pandas.DataFrame]:
+    if not path.endswith(".json.gz"):
+        return
+    try:
+        with gzip.open(path, "rt") as input_fp:
             observations = json.load(input_fp)["observations"]
             if len(observations) == 0:
-                continue
-            do_append = os.path.isfile(output_path)
-            pandas.json_normalize(observations).to_csv(
+                return
+            return pandas.json_normalize(observations)
+    except Exception as error:
+        logging.info("Caught exception {}: {}".format(error, path))
+
+def stream_observations(paths: typing.Iterable[str],
+                        output_path: str,
+                        jobs: int = 1):
+    first = True
+    df_stream = (observations_json_gz_to_df(path) for path in paths)
+    pool = None
+    if jobs > 1:
+        logging.info("Using {} parallel workers to process JSON data".format(jobs))
+        pool = multiprocessing.Pool(jobs)
+        df_stream = pool.imap(observations_json_gz_to_df, paths)
+    for df in df_stream:
+        if df is not None:
+            df.to_csv(
                 output_path,
-                mode="a" if do_append else "w",
-                header=not do_append,
+                mode="w" if first else "a",
+                header=first,
                 index=False
             )
+        first = False
+    if pool:
+        pool.close()
 
 
 def main():
@@ -200,13 +227,14 @@ def main():
                 )
             )
         stream_observations(
-            tqdm_if_verbose(
+            paths=tqdm_if_verbose(
                 stream_file_paths(scrape_subdirectory),
                 verbose=args.progress,
                 total=total_files,
                 desc="Reading and converting observations"
             ),
-            args.output_file
+            output_path=args.output_file,
+            jobs=args.jobs
         )
         return
 
@@ -227,13 +255,14 @@ def main():
                 )
             )
         stream_observations(
-            tqdm_if_verbose(
+            paths=tqdm_if_verbose(
                 stream_file_paths(scrape_subdirectory),
                 verbose=args.progress,
                 total=total_files,
                 desc="Reading and converting observations"
             ),
-            args.output_file
+            output_path=args.output_file,
+            jobs=args.jobs
         )
         return
 
