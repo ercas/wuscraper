@@ -22,8 +22,6 @@ EMPTY_DICT = dict()
 DEFAULT_OUTPUT_DIR = "output/"
 
 
-# %%
-
 def load_json_gz(path: str) -> typing.Union[dict, list]:
     """ Read data from a GZIP-compressed JSON file.
 
@@ -319,7 +317,7 @@ class WUScraper:
             ).json()
         )
         if as_df:
-            return pandas.DataFrame.from_dict(result["observations"])
+            return pandas.json_normalize(result["observations"])
         return result
 
     def daily(self,
@@ -364,5 +362,5 @@ class WUScraper:
             os.remove(output_path)
             raise RuntimeError("No observations")
         if as_df:
-            return pandas.DataFrame.from_dict(result["observations"])
+            return pandas.json_normalize(result["observations"])
         return result
