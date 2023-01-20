@@ -191,6 +191,7 @@ def stream_observations(paths: typing.Iterable[str],
         first = False
     if pool:
         pool.close()
+        pool.join()
 
 
 def main():
