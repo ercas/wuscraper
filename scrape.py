@@ -19,6 +19,8 @@ import wuscraper
 
 DEFAULT_API_KEY_PATH = "api_key.txt"
 
+DEFAULT_TILES_PATH = "generated/conus_tiles.csv"
+
 
 class Targets(enum.Enum):
     DAILY = enum.auto()
@@ -131,6 +133,9 @@ def build_parser():
     features_parser.add_argument(
         "zoom_levels", nargs="*", type=int, default=list(range(1, 11 + 1))
     )
+    features_parser.add_argument(
+        "-t", "--tiles", type=str, default=DEFAULT_TILES_PATH
+    )
 
     export_daily_parser = subparsers.add_parser(
         "export-daily", parents=[parent_parser],
@@ -158,6 +163,7 @@ def build_parser():
 
     return parser
 
+
 def observations_json_gz_to_df(path: str) -> typing.Optional[pandas.DataFrame]:
     if not path.endswith(".json.gz"):
         return
@@ -169,6 +175,7 @@ def observations_json_gz_to_df(path: str) -> typing.Optional[pandas.DataFrame]:
             return pandas.json_normalize(observations)
     except Exception as error:
         logging.info("Caught exception {}: {}".format(error, path))
+
 
 def stream_observations(paths: typing.Iterable[str],
                         output_path: str,
@@ -374,7 +381,7 @@ def main():
                     desc="Zoom levels"
             ):
                 zoom_level = str(zoom_level_)
-                with open("generated/conus_tiles.csv", "r") as f:
+                with open(args.tiles, "r") as f:
                     reader = csv.reader(f)
                     tiles_xyz = [
                         tuple(map(int, xyz))

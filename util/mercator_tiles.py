@@ -21,6 +21,10 @@ import mercantile
 import shapely.geometry
 import tqdm
 
+DEFAULT_BOUNDS_GEOJSON = "external/conus_1km_buffer_wgs84.geojson"
+
+DEFAULT_OUTPUT = "generated/conus_tiles.csv"
+
 ROOT_TILE = mercantile.Tile(x=0, y=0, z=0)
 
 GPKG_SCHEMA = {
@@ -167,18 +171,24 @@ def export_tiles_gpkg(max_zoom: int = 12,
 
 
 if __name__ == "__main__":
+    import argparse
     import csv
 
-    if not os.path.isdir("generated"):
-        os.makedirs("generated")
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-i", "--input", default=DEFAULT_BOUNDS_GEOJSON)
+    parser.add_argument("-o", "--output", default=DEFAULT_OUTPUT)
 
-    with fiona.open("external/conus_1km_buffer_wgs84.geojson", "r") as input_fp:
-        conus = shapely.geometry.shape(next(iter(input_fp))["geometry"])
+    args = parser.parse_args()
 
-    # export_tiles_gpkg(max_zoom=11, polygon=conus)
-    all_tiles = calculate_tiles_xyz(max_zoom=11, polygon=conus)
+    if not os.path.isdir(os.path.dirname(args.output)):
+        os.makedirs(os.path.dirname(args.output))
 
-    with open("generated/conus_tiles.csv", "w") as output_fp:
+    with fiona.open(args.input, "r") as input_fp:
+        bounds = shapely.geometry.shape(next(iter(input_fp))["geometry"])
+
+    all_tiles = calculate_tiles_xyz(max_zoom=11, polygon=bounds)
+
+    with open(args.output, "w") as output_fp:
         writer = csv.writer(output_fp, lineterminator="\n")
         writer.writerow(("x", "y", "z"))
         for zoom, tiles_xyz in all_tiles.items():
