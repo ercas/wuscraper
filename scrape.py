@@ -131,10 +131,12 @@ def build_parser():
     )
     features_parser.set_defaults(target=Targets.FEATURES)
     features_parser.add_argument(
-        "zoom_levels", nargs="*", type=int, default=list(range(1, 11 + 1))
+        "zoom_levels", nargs="*", type=int, default=list(range(1, 11 + 1)),
+        help="A list of zoom levels to scrape"
     )
     features_parser.add_argument(
-        "-t", "--tiles", type=str, default=DEFAULT_TILES_PATH
+        "-t", "--tiles", type=str, default=DEFAULT_TILES_PATH,
+        help="The path to a file created by `util/mercator_tiles.py`"
     )
 
     export_daily_parser = subparsers.add_parser(
