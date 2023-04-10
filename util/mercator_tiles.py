@@ -25,6 +25,8 @@ DEFAULT_BOUNDS_GEOJSON = "external/conus_1km_buffer_wgs84.geojson"
 
 DEFAULT_OUTPUT = "generated/conus_tiles.csv"
 
+DEFAULT_MAX_ZOOM = 11
+
 ROOT_TILE = mercantile.Tile(x=0, y=0, z=0)
 
 GPKG_SCHEMA = {
@@ -175,18 +177,30 @@ if __name__ == "__main__":
     import csv
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("-i", "--input", default=DEFAULT_BOUNDS_GEOJSON)
-    parser.add_argument("-o", "--output", default=DEFAULT_OUTPUT)
+    parser.add_argument(
+        "-i", "--input", default=DEFAULT_BOUNDS_GEOJSON,
+        help="The path to a shapefile readable by OGR that contains the scrape "
+             "area extents, in WGS-84."
+    )
+    parser.add_argument(
+        "-o", "--output", default=DEFAULT_OUTPUT,
+        help="The path of the CSV file to be written to."
+    )
+    parser.add_argument(
+        "-z", "--max-zoom", default=DEFAULT_MAX_ZOOM, type=int,
+        help="The maximum zoom level that will be generated."
+    )
 
     args = parser.parse_args()
 
-    if not os.path.isdir(os.path.dirname(args.output)):
-        os.makedirs(os.path.dirname(args.output))
+    output_directory = os.path.dirname(args.output)
+    if (output_directory != "") and not os.path.isdir(output_directory):
+        os.makedirs(output_directory)
 
     with fiona.open(args.input, "r") as input_fp:
         bounds = shapely.geometry.shape(next(iter(input_fp))["geometry"])
 
-    all_tiles = calculate_tiles_xyz(max_zoom=11, polygon=bounds)
+    all_tiles = calculate_tiles_xyz(max_zoom=args.max_zoom, polygon=bounds)
 
     with open(args.output, "w") as output_fp:
         writer = csv.writer(output_fp, lineterminator="\n")
