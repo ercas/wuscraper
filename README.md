@@ -18,11 +18,11 @@ Normal usage of `wuscraper` is as follows (further details in subsequent section
 
 ### Obtaining an API key
 
-To obtain an API key, first open your browser's Network console (Ctrl+Shift+E in Firefox or Ctrl+Shift+I -> Network tab n Chrome), `mitmproxy`, or a similar network monitor and then navigate to the Underground [Wundermap](https://www.wunderground.com/wundermap). Filtering for `api.weather.com` should yield requests hat pass `apiKey=` as a URL parameter. Write this API to `./api_key.txt`, or save it for use in the `--api-key` parameter of `scrape.py`.
+To obtain an API key, first open your browser's Network console (Ctrl+Shift+E in Firefox or Ctrl+Shift+I -> Network tab n Chrome), `mitmproxy`, or a similar network monitor and then navigate to the Weather Underground [Wundermap](https://www.wunderground.com/wundermap). Filtering for `api.weather.com` should yield requests hat pass `apiKey=` as a URL parameter. Write this API to `./api_key.txt`, or save it for use in the `--api-key` parameter of `scrape.py`.
 
 ### Generating Web Mercator tiles
 
-A list of Web Mercator tiles must be created for use in station discovery. The file `util/mercator_tiles.py` can generate this file for you if given a shapefile covering the area of interest (projected to WGS-84, in any format readable by OGR). See `--help` for more information:
+A list of Web Mercator tiles must be created for use in station discovery. The file `util/mercator_tiles.py` can generate this file for you if given a shapefile covering the area of interest (projected to WGS-84, [in any format readable by OGR](https://gdal.org/drivers/vector/index.html)). See `--help` for more information:
 
     usage: mercator_tiles.py [-h] [-i INPUT] [-o OUTPUT] [-z MAX_ZOOM]
 
@@ -90,11 +90,11 @@ Each one of these files is a valid GeoJSON file that can be opened in a program 
     $ zcat output/features/273_409_11.json.gz  | jq -c .features[] | wc -l
     62
 
-The scraped features can be exported using by running the same command and additionally passing `--output-file` - the script will not re-retrieve data that has already been retrieved. The output file can be in any format supported by OGR.
+The scraped features can be exported using by running the same command and additionally passing `--output-file` - the script will not re-retrieve data that has already been retrieved. The output file can be [in any format supported by OGR](https://gdal.org/drivers/vector/index.html).
 
 ### Scraping weather data
 
-The primary scraping functionality is through the `daily` subparser of `scrape.py`, which retrieves hourly data from personal NWS-operated weather stations. There is also a `historical` subparser that can retrieve hourly data, though only from NWS-operated weather stations. See `--help` for more information:
+The primary scraping functionality is through the `daily` subparser of `scrape.py`, which retrieves daily data from personal or NWS-operated weather stations. There is also a `historical` subparser that can retrieve hourly data, though only from NWS-operated weather stations. See `--help` for more information:
 
     usage: scrape.py daily [-h] [-a API_KEY] [-d SCRAPE_DIRECTORY] [-o OUTPUT_FILE] [-p] [-v] [-s START_DATE] [-e END_DATE] stations [stations ...]
 
@@ -136,7 +136,7 @@ If you have [GNU Parallel](https://www.gnu.org/software/parallel/) installed, yo
     cat features-list.txt |
         parallel --jobs 4 --bar ./scrape.py daily --scrape-directory output/ --progress
 
-As a side note, the script will also create a text file called `complete` in the directory of each weather station after the requested date range has been scraped completely. This can be exploited to, for example, resume interrupted scrapes using something like `uniq`:
+As a side note, the script will also create an empty file called `complete` in the directory of each weather station after the requested date range has been scraped completely. This can be exploited to, for example, resume interrupted scrapes using something like `sort | uniq -u`:
 
     (
         find output/daily/ -name complete |
@@ -152,7 +152,7 @@ As a side note, the script will also create a text file called `complete` in the
 
 The scraped data is available in the form of raw JSON responses. Additional code exists to facilitate the parsing and exporting of this JSON data into CSV files that can be read more easily by other programs.
 
-Both the `daily` and `historical` subparsers have a `--output-file` argument that can be used to specify a CSV file to dump scraped data to after the scrape has completed. However, the scraper has been designed to run single-threaded; multithreaded parsing and exporting facilities can instead be accessed usinf the `export-daily` and `export-historical` subparsers. See `--help` for more information:
+Both the `daily` and `historical` subparsers have an `--output-file` argument that can be used to specify a CSV file to dump scraped data to after the scrape has completed. However, the scraper has been designed to run single-threaded; multithreaded parsing and exporting facilities can instead be accessed using the `export-daily` and `export-historical` subparsers. See `--help` for more information:
 
     usage: scrape.py export-daily [-h] [-a API_KEY] [-d SCRAPE_DIRECTORY] [-o OUTPUT_FILE] [-p] [-v] [-j JOBS]
 
